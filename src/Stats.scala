@@ -16,7 +16,7 @@ class Deck {
   def remove(discards: Set[Card]) { discards foreach {card: Card => cards dequeueFirst (_ == card)} }
 }
 
-class Hand(hand: Iterable[Card]) {
+class Hand(hand: Set[Card]) {
   val (handType, sorted) = {
     require(hand.size == 5)
 
@@ -58,7 +58,10 @@ object Hand {
 
   implicit val ordering = Ordering by {hand: Hand => (hand.handType, hand.sorted)}
 
-  def selectBest(hand: Set[Card]) = (for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))).max
+  val bestCache = TrieMap[Set[Card], Hand]()
+  def selectBest(hand: Set[Card]) = bestCache getOrElseUpdate (hand, generateAll(hand).max)
+  private def generateAll(hand: Set[Card]) = for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))
+
 }
 
 case class Counter() {
@@ -89,7 +92,7 @@ class Stats {
 object Stats {
   def evaluate(myHand: Set[Card], board: Set[Card], otherPlayers: Int, simulations: Int = 10000) = {
     val stats = new Stats()
-    (1 to simulations).par foreach (simulation => {
+    for(simulation <- 1 to simulations) {
       val deck = new Deck()
       deck remove (myHand ++ board)
       val community = mutable.Set() ++ board
@@ -105,7 +108,7 @@ object Stats {
         case victory if !(matchUps contains 0) => stats.logWin(victory)
         case tied => stats.logTie(tied, matchUps(0).size + 1)
       }
-    })
+    }
     require(stats.total == simulations)
     stats
   }
