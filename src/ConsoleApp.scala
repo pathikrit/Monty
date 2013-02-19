@@ -1,5 +1,9 @@
-object ConsoleApp extends App {
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.concurrent.future
+import scala.concurrent.ExecutionContext.Implicits.global
 
+object ConsoleApp extends App {
   def fromSpaceSeparated(s: String) = if (s.isEmpty) Array.empty[Card] else (s split " " map (Card from _))
   def readCardsFromConsole = fromSpaceSeparated(Console.readLine()).toSet
 
@@ -18,7 +22,13 @@ object ConsoleApp extends App {
       print("Enter number of players (excluding you) who have not folded yet: ")
       val otherPlayers = Console.readInt()
       require(otherPlayers > 0, "Atleast one other player needed")
-      print(Stats.evaluate(myHand, board, otherPlayers))
+      val evaluation = future { Stats.evaluate(myHand, board, otherPlayers) }
+      print("Enter current pot size: $")
+      val possibleWins = Console.readDouble()
+      print("Enter your bets so far: $")
+      val possibleLoss = Console.readDouble()
+      val stats = Await.result(evaluation, Duration(5, "seconds"))
+      println(s"$stats\nExpected returns: $$${stats.expectedReturn(possibleWins, possibleLoss)}")
     } catch {
       case e: Exception => Console.err.println(s"Invalid input: ${e.getMessage}. Try again")
     }

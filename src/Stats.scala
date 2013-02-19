@@ -65,22 +65,28 @@ class Stats {
   import Stats._
 
   var (expectedWin, expectedLoss) = (0.0, 0.0)
-  val (wins, ties, losses) = (newTypeCounter, newTypeCounter, newTypeCounter)
+  val (wins, ties, losses) = (Counter("Wins with"), new Counter("Ties with"), new Counter("Loses to"))
 
-  def logWin(handType: HT) { expectedWin += 1; wins(handType) += 1 }
-  def logLoss(handType: HT) { expectedLoss += 1; losses(handType) += 1 }
-  def logTie(handType: HT, split: Int) { expectedWin += 1.0/split; ties(handType) += 1 }
+  def logWin(handType: Hand.Type.Value) { expectedWin += 1; wins log handType }
+  def logLoss(handType: Hand.Type.Value) { expectedLoss += 1; losses log handType }
+  def logTie(handType: Hand.Type.Value, split: Int) { expectedWin += 1.0/split; ties log handType}
 
-  def expectedReturn(potSize: Double, yourBets: Double) = potSize*expectedWin - yourBets*expectedLoss
+  def cumulative = wins.count ++ ties.count ++ losses.count
+  def total = cumulative.values.sum
+  def expectedReturn(canWin: Double, canLoss: Double) = (canWin*expectedWin - canLoss*expectedLoss)/total
+
+  override def toString = (cumulative ++ Map("expectedWin" -> expectedWin, "expectedLoss" -> expectedLoss)) mapValues {v => 100*v/total} toString
 }
 
 object Stats {
-  private type HT = Hand.Type.Value
-  private def newTypeCounter = TrieMap[HT, Int]().withDefaultValue(0)
+  case class Counter(name: String) {
+    val count = TrieMap[String, Double]().withDefaultValue(0)
+    def log(key: Hand.Type.Value) { count(name + " " + key) += 1 }
+  }
 
   def evaluate(myHand: Set[Card], board: Set[Card], otherPlayers: Int, simulations: Int = 1000) = {
     val stats = new Stats()
-    (1 to simulations).par foreach (simulation => {
+    for (simulation <- 1 to simulations) { //TODO: parallelize
       val deck = new Deck()
       deck remove (myHand ++ board)
       val community = mutable.Set() ++ board
@@ -96,7 +102,7 @@ object Stats {
         case victory if !(matchUps contains 0) => stats.logWin(victory)
         case tied => stats.logTie(tied, matchUps(0).size + 1)
       }
-    })
+    }
     stats
   }
 }
