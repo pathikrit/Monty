@@ -14,7 +14,6 @@ class Deck {
   val cards = mutable.Queue() ++ util.Random.shuffle(Card.all)
   def deal = cards dequeue
   def remove(discards: Set[Card]) { discards foreach {card: Card => cards dequeueFirst (_ == card)} }
-  override def toString = cards mkString ","
 }
 
 class Hand(hand: Iterable[Card]) {
@@ -29,16 +28,17 @@ class Hand(hand: Iterable[Card]) {
     val isFlush = suitGroups.size == 1
     val isWheel = "A2345" map {Card.ranks indexOf _} forall ranks.contains   // A,2,3,4,5 straight
     val isStraight = rankGroups.size == 5 && (ranks.max - ranks.min) == 4 || isWheel
+    val (isThreeOfAKind, isOnePair) = (hasSameRanks(matches = 3), hasSameRanks(matches = 2))
 
-    val handType = if (isStraight && isFlush)                           Hand.Type.StraightFlush
-      else if (hasSameRanks(matches = 4))                               Hand.Type.FourOfAKind
-      else if (hasSameRanks(matches = 3) && hasSameRanks(matches = 2))  Hand.Type.FullHouse
-      else if (isFlush)                                                 Hand.Type.Flush
-      else if (isStraight)                                              Hand.Type.Straight
-      else if (hasSameRanks(matches = 3))                               Hand.Type.ThreeOfAKind
-      else if (hasSameRanks(required = 2))                              Hand.Type.TwoPair
-      else if (hasSameRanks())                                          Hand.Type.OnePair
-      else                                                              Hand.Type.HighCard
+    val handType = if (isStraight && isFlush) Hand.Type.StraightFlush
+      else if (hasSameRanks(matches = 4))     Hand.Type.FourOfAKind
+      else if (isThreeOfAKind && isOnePair)   Hand.Type.FullHouse
+      else if (isFlush)                       Hand.Type.Flush
+      else if (isStraight)                    Hand.Type.Straight
+      else if (isThreeOfAKind)                Hand.Type.ThreeOfAKind
+      else if (hasSameRanks(required = 2))    Hand.Type.TwoPair
+      else if (isOnePair)                     Hand.Type.OnePair
+      else                                    Hand.Type.HighCard
 
     val tieBreakers = {
       def bestFromGrouping(g: Int) = (rankGroups filter (_._2.size == g)).values.flatten.toList.sorted
@@ -61,12 +61,16 @@ object Hand {
   def selectBest(hand: Set[Card]) = (for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))).max
 }
 
-class Stats {
-  import Stats._
+case class Counter() {
+  val count = TrieMap[Hand.Type.Value, Int]().withDefaultValue(0)
+  var total = 0
+  def log(key: Hand.Type.Value) { count(key) += 1; total += 1 }
+}
 
+class Stats {
   var (expectedWin, expectedLoss) = (0.0, 0.0)
   val (wins, ties, losses) = (Counter(), new Counter(), new Counter())
-  def total = (wins.total + ties.total + losses.total)
+  def total = wins.total + ties.total + losses.total
 
   def logWin(handType: Hand.Type.Value) { expectedWin += 1; wins log handType }
   def logLoss(handType: Hand.Type.Value) { expectedLoss += 1; losses log handType }
@@ -76,22 +80,16 @@ class Stats {
 
   override def toString = {
     def percent(n: Int) = f"${100.0 * n /total}%5.2f%"
-    def bucketDisplay(c: Counter) = (c.count map {e => f"${e._1}%15s: ${percent(e._2)}%s"}).mkString("\n")
+    def bucketDisplay(c: Counter) = (c.count map {e => f"${e._1}%15s: ${percent(e._2)}%s"}) mkString "\n"
     def totalDisplay(name: String, c: Counter) = s" $name: ${percent(c.total)}\n${bucketDisplay(c)}"
     s"${totalDisplay("Wins", wins)}\n${totalDisplay("Ties", ties)}\n${totalDisplay("Loss", losses)}"
   }
 }
 
 object Stats {
-  case class Counter() {
-    val count = TrieMap[Hand.Type.Value, Int]().withDefaultValue(0)
-    var total = 0
-    def log(key: Hand.Type.Value) { count(key) += 1; total += 1 }
-  }
-
-  def evaluate(myHand: Set[Card], board: Set[Card], otherPlayers: Int, simulations: Int = 1000) = {
+  def evaluate(myHand: Set[Card], board: Set[Card], otherPlayers: Int, simulations: Int = 10000) = {
     val stats = new Stats()
-    for (simulation <- 1 to simulations) { //TODO: parallelize
+    (1 to simulations).par foreach (simulation => {
       val deck = new Deck()
       deck remove (myHand ++ board)
       val community = mutable.Set() ++ board
@@ -107,7 +105,8 @@ object Stats {
         case victory if !(matchUps contains 0) => stats.logWin(victory)
         case tied => stats.logTie(tied, matchUps(0).size + 1)
       }
-    }
+    })
+    require(stats.total == simulations)
     stats
   }
 }
