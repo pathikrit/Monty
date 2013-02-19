@@ -29,7 +29,7 @@ object ConsoleApp extends App {
         case analysis: Analysis => {
           val expectedReturn = analysis.expectedReturn(possibleWins, possibleLoss)
           val percentReturn = 100 * expectedReturn/possibleLoss
-          println(f"$analysis\nExpected returns: $$$expectedReturn%6.3f ($percentReturn%5.2f%)")
+          println(f"$analysis\nExpected return: $$$expectedReturn%6.3f ($percentReturn%5.2f%)")
         }
       }
       Console.readLine()

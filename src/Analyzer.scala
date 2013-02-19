@@ -61,7 +61,6 @@ object Hand {
   val bestCache = TrieMap[Set[Card], Hand]()
   def selectBest(hand: Set[Card]) = bestCache getOrElseUpdate (hand, generateAll(hand).max)
   private def generateAll(hand: Set[Card]) = for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))
-
 }
 
 case class Counter() {
@@ -75,9 +74,9 @@ class Analysis {
   val (wins, ties, losses) = (Counter(), new Counter(), new Counter())
   def total = wins.total + ties.total + losses.total
 
-  def logWin(handType: Hand.Type.Value) { expectedWin += 1; wins log handType }
-  def logLoss(handType: Hand.Type.Value) { expectedLoss += 1; losses log handType }
-  def logTie(handType: Hand.Type.Value, split: Int) { expectedWin += 1.0/split; ties log handType}
+  def reportWin(handType: Hand.Type.Value) { expectedWin += 1; wins log handType }
+  def reportTie(handType: Hand.Type.Value, split: Int) { expectedWin += 1.0/split; ties log handType}
+  def reportLoss(handType: Hand.Type.Value) { expectedLoss += 1; losses log handType }
 
   def expectedReturn(canWin: Double, canLoss: Double) = (canWin*expectedWin - canLoss*expectedLoss)/total
 
@@ -104,9 +103,9 @@ object Analyzer {
       val matchUps = otherBests groupBy {p => Hand.ordering.compare(myBest, p).signum}
 
       myBest.handType match {
-        case defeat if matchUps contains -1 => analysis.logLoss(matchUps(-1).max.handType)
-        case victory if !(matchUps contains 0) => analysis.logWin(victory)
-        case tied => analysis.logTie(tied, matchUps(0).size + 1)
+        case defeat if matchUps contains -1 => analysis.reportLoss(matchUps(-1).max.handType)
+        case victory if !(matchUps contains 0) => analysis.reportWin(victory)
+        case tied => analysis.reportTie(tied, matchUps(0).size + 1)
       }
     }
     require(analysis.total == simulations)
