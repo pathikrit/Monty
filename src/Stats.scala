@@ -65,23 +65,28 @@ class Stats {
   import Stats._
 
   var (expectedWin, expectedLoss) = (0.0, 0.0)
-  val (wins, ties, losses) = (Counter("Wins with"), new Counter("Ties with"), new Counter("Loses to"))
+  val (wins, ties, losses) = (Counter(), new Counter(), new Counter())
+  def total = (wins.total + ties.total + losses.total)
 
   def logWin(handType: Hand.Type.Value) { expectedWin += 1; wins log handType }
   def logLoss(handType: Hand.Type.Value) { expectedLoss += 1; losses log handType }
   def logTie(handType: Hand.Type.Value, split: Int) { expectedWin += 1.0/split; ties log handType}
 
-  def cumulative = wins.count ++ ties.count ++ losses.count
-  def total = cumulative.values.sum
   def expectedReturn(canWin: Double, canLoss: Double) = (canWin*expectedWin - canLoss*expectedLoss)/total
 
-  override def toString = (cumulative ++ Map("expectedWin" -> expectedWin, "expectedLoss" -> expectedLoss)) mapValues {v => 100*v/total} toString
+  override def toString = {
+    def percent(n: Int) = f"${100.0 * n /total}%5.2f%"
+    def bucketDisplay(c: Counter) = (c.count map {e => f"${e._1}%15s: ${percent(e._2)}%s"}).mkString("\n")
+    def totalDisplay(name: String, c: Counter) = s" $name: ${percent(c.total)}\n${bucketDisplay(c)}"
+    s"${totalDisplay("Wins", wins)}\n${totalDisplay("Ties", ties)}\n${totalDisplay("Loss", losses)}"
+  }
 }
 
 object Stats {
-  case class Counter(name: String) {
-    val count = TrieMap[String, Double]().withDefaultValue(0)
-    def log(key: Hand.Type.Value) { count(name + " " + key) += 1 }
+  case class Counter() {
+    val count = TrieMap[Hand.Type.Value, Int]().withDefaultValue(0)
+    var total = 0
+    def log(key: Hand.Type.Value) { count(key) += 1; total += 1 }
   }
 
   def evaluate(myHand: Set[Card], board: Set[Card], otherPlayers: Int, simulations: Int = 1000) = {

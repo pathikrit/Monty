@@ -1,5 +1,3 @@
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import scala.concurrent.future
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -27,8 +25,10 @@ object ConsoleApp extends App {
       val possibleWins = Console.readDouble()
       print("Enter your bets so far: $")
       val possibleLoss = Console.readDouble()
-      val stats = Await.result(evaluation, Duration(5, "seconds"))
-      println(s"$stats\nExpected returns: $$${stats.expectedReturn(possibleWins, possibleLoss)}")
+      evaluation onSuccess {
+        case stats: Stats => println(s"$stats\nExpected returns: $$${stats.expectedReturn(possibleWins, possibleLoss)}")
+      }
+      Console.readLine()
     } catch {
       case e: Exception => Console.err.println(s"Invalid input: ${e.getMessage}. Try again")
     }
