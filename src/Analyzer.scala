@@ -70,7 +70,7 @@ case class Counter() {
   def log(key: Hand.Type.Value) { count(key) += 1; total += 1 }
 }
 
-class Stats {
+class Analysis {
   var (expectedWin, expectedLoss) = (0.0, 0.0)
   val (wins, ties, losses) = (Counter(), new Counter(), new Counter())
   def total = wins.total + ties.total + losses.total
@@ -89,9 +89,9 @@ class Stats {
   }
 }
 
-object Stats {
+object Analyzer {
   def evaluate(myHand: Set[Card], board: Set[Card], otherPlayers: Int, simulations: Int = 10000) = {
-    val stats = new Stats()
+    val analysis = new Analysis()
     for(simulation <- 1 to simulations) {
       val deck = new Deck()
       deck remove (myHand ++ board)
@@ -104,12 +104,12 @@ object Stats {
       val matchUps = otherBests groupBy {p => Hand.ordering.compare(myBest, p).signum}
 
       myBest.handType match {
-        case defeat if matchUps contains -1 => stats.logLoss(matchUps(-1).max.handType)
-        case victory if !(matchUps contains 0) => stats.logWin(victory)
-        case tied => stats.logTie(tied, matchUps(0).size + 1)
+        case defeat if matchUps contains -1 => analysis.logLoss(matchUps(-1).max.handType)
+        case victory if !(matchUps contains 0) => analysis.logWin(victory)
+        case tied => analysis.logTie(tied, matchUps(0).size + 1)
       }
     }
-    require(stats.total == simulations)
-    stats
+    require(analysis.total == simulations)
+    analysis
   }
 }

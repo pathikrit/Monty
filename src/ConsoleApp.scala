@@ -20,13 +20,17 @@ object ConsoleApp extends App {
       print("Enter number of players (excluding you) who have not folded yet: ")
       val otherPlayers = Console.readInt()
       require(otherPlayers > 0, "Atleast one other player needed")
-      val evaluation = future { Stats.evaluate(myHand, board, otherPlayers) }
+      val evaluation = future { Analyzer.evaluate(myHand, board, otherPlayers) }
       print("Enter current pot size: $")
       val possibleWins = Console.readDouble()
       print("Enter your bets so far: $")
       val possibleLoss = Console.readDouble()
       evaluation onSuccess {
-        case stats: Stats => println(s"$stats\nExpected returns: $$${stats.expectedReturn(possibleWins, possibleLoss)}")
+        case analysis: Analysis => {
+          val expectedReturn = analysis.expectedReturn(possibleWins, possibleLoss)
+          val percentReturn = 100 * expectedReturn/possibleLoss
+          println(f"$analysis\nExpected returns: $$$expectedReturn%6.3f ($percentReturn%5.2f%)")
+        }
       }
       Console.readLine()
     } catch {
