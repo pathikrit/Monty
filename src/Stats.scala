@@ -13,6 +13,7 @@ object Card {
 class Deck {
   val cards = mutable.Queue() ++ util.Random.shuffle(Card.all)
   def deal = cards dequeue
+  def remove(discards: Set[Card]) { discards foreach {card: Card => cards dequeueFirst (_ == card)} }
   override def toString = cards mkString ","
 }
 
@@ -74,14 +75,14 @@ class Stats {
 }
 
 object Stats {
-  type HT = Hand.Type.Value
-  def newTypeCounter = TrieMap[HT, Int]().withDefaultValue(0)
+  private type HT = Hand.Type.Value
+  private def newTypeCounter = TrieMap[HT, Int]().withDefaultValue(0)
 
   def evaluate(myHand: Set[Card], board: Set[Card], otherPlayers: Int, simulations: Int = 1000) = {
     val stats = new Stats()
     (1 to simulations).par foreach (simulation => {
       val deck = new Deck()
-      (myHand ++ board) foreach {card: Card => deck.cards dequeueFirst (_ == card)}
+      deck remove (myHand ++ board)
       val community = mutable.Set() ++ board
       val players = (1 to otherPlayers) map {i => Set(deck.deal, deck.deal)}
       while (community.size < 5) community += deck.deal

@@ -1,16 +1,16 @@
 object ConsoleApp extends App {
 
-  def fromCommaSeparated(s: String) = if (s.isEmpty) Array.empty[Card] else (s split "," map {c => Card from c.trim})
-  def readCardsFromConsole = fromCommaSeparated(Console.readLine()).toSet
+  def fromSpaceSeparated(s: String) = if (s.isEmpty) Array.empty[Card] else (s split " " map (Card from _))
+  def readCardsFromConsole = fromSpaceSeparated(Console.readLine()).toSet
 
   while(true) {
     try {
-      println("---------------------------------")
-      print("Enter hand comma-separated (e.g AH, TS): ")
+      println("--------------------------------------------------------------------")
+      print("Enter hand (e.g AH TS): ")
       val myHand = readCardsFromConsole
       println(s"You are holding: $myHand")
       require(myHand.size == 2, "You must have 2 unique cards in hand")
-      print("Enter community cards (in similar comma separated format): ")
+      print("Enter community: ")
       val board = readCardsFromConsole
       println(s"Community Cards: $board")
       require(Array(0,3,4,5) exists {board.size == _}, "Community must have 0 or 3 or 4 or 5 unique cards")
