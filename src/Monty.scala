@@ -26,7 +26,7 @@ class Hand(hand: Iterable[Card]) {
     def hasSameRanks(matches: Int = 2, required: Int = 1) = (rankGroups count {_._2.size == matches}) >= required
 
     val isFlush = suitGroups.size == 1
-    val isWheel = "A2345" forall {r => ranks contains (Card.ranks indexOf r)}   // A,2,3,4,5 straight
+    val isWheel = "A2345" map {Card.ranks indexOf _} forall ranks.contains   // A,2,3,4,5 straight
     val isStraight = rankGroups.size == 5 && (ranks.max - ranks.min) == 4 || isWheel
 
     val handType = if (isStraight && isFlush)                           Hand.Type.StraightFlush
@@ -49,11 +49,11 @@ class Hand(hand: Iterable[Card]) {
 }
 
 object Hand {
+  import scala.math.Ordering.Implicits._
+
   object Type extends Enumeration {
     val HighCard, OnePair, TwoPair, ThreeOfAKind, Straight, Flush, FullHouse, FourOfAKind, StraightFlush = Value
   }
-
-  import scala.math.Ordering.Implicits._
 
   implicit val ordering = Ordering by {hand: Hand => (hand.handType, hand.sorted)}
 
@@ -61,7 +61,6 @@ object Hand {
 }
 
 class Stats {
-
   import Stats._
 
   var (expectedWin, expectedLoss) = (0.0, 0.0)
@@ -94,36 +93,9 @@ object Stats {
       myBest.handType match {
         case defeat if matchUps contains -1 => stats.logLoss(matchUps(-1).max.handType)
         case victory if !(matchUps contains 0) => stats.logWin(victory)
-        case tied => stats.logTie(tied, matchUps(0).size)
+        case tied => stats.logTie(tied, matchUps(0).size + 1)
       }
     })
     stats
-  }
-}
-
-object Monty extends App {
-
-  def fromCommaSeparated(s: String) = if (s.isEmpty) Array.empty[Card] else (s split "," map {c => Card from c.trim})
-  def readCardsFromConsole = fromCommaSeparated(Console.readLine()).toSet
-
-  while(true) {
-    try {
-      println("---------------------------------")
-      print("Enter hand comma-separated (e.g AH, TS): ")
-      val myHand = readCardsFromConsole
-      println(s"You are holding: $myHand")
-      require(myHand.size == 2, "You must have 2 unique cards in hand")
-      print("Enter community cards (in similar comma separated format): ")
-      val board = readCardsFromConsole
-      println(s"Community Cards: $board")
-      require(Array(0,3,4,5) exists {board.size == _}, "Community must have 0 or 3 or 4 or 5 unique cards")
-      require(board intersect myHand isEmpty, "You cannot hold community cards")
-      print("Enter number of players (excluding you) who have not folded yet: ")
-      val otherPlayers = Console.readInt()
-      require(otherPlayers > 0, "Atleast one other player needed")
-      print(Stats.evaluate(myHand, board, otherPlayers))
-    } catch {
-      case e: Exception => Console.err.println(s"Invalid input: ${e.getMessage}. Try again")
-    }
   }
 }
