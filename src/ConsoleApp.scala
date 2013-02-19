@@ -2,8 +2,8 @@ import scala.concurrent.future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object ConsoleApp extends App {
-  def fromSpaceSeparated(s: String) = if (s.isEmpty) Array.empty[Card] else (s split " " map (Card from _))
-  def readCardsFromConsole = fromSpaceSeparated(Console.readLine()).toSet
+  def cardFromLine(line: String) = if (line.isEmpty) Array.empty[Card] else (line split " " map (Card from _))
+  def readCardsFromConsole = cardFromLine(Console.readLine).toSet
 
   while(true) {
     try {
@@ -18,21 +18,21 @@ object ConsoleApp extends App {
       require(Array(0,3,4,5) exists {board.size == _}, "Community must have 0 or 3 or 4 or 5 unique cards")
       require(board intersect myHand isEmpty, "You cannot hold community cards")
       print("Enter number of players (excluding you) who have not folded yet: ")
-      val otherPlayers = Console.readInt()
+      val otherPlayers = Console.readInt
       require(otherPlayers > 0, "Atleast one other player needed")
       val evaluation = future { Analyzer.evaluate(myHand, board, otherPlayers) }
       print("Enter current pot size: $")
-      val possibleWins = Console.readDouble()
+      val possibleWins = Console.readDouble
       print("Enter your bets so far: $")
-      val possibleLoss = Console.readDouble()
+      val possibleLoss = Console.readDouble
       evaluation onSuccess {
         case analysis: Analysis => {
-          val expectedReturn = analysis.expectedReturn(possibleWins, possibleLoss)
+          val expectedReturn = analysis expectedReturn (possibleWins, possibleLoss)
           val percentReturn = 100 * expectedReturn/possibleLoss
           println(f"$analysis\nExpected return: $$$expectedReturn%6.3f ($percentReturn%5.2f%)")
         }
       }
-      Console.readLine()
+      Console readLine
     } catch {
       case e: Exception => Console.err.println(s"Invalid input: ${e.getMessage}. Try again")
     }

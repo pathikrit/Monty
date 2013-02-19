@@ -43,7 +43,7 @@ class Hand(hand: Set[Card]) {
     val tieBreakers = {
       def bestFromGrouping(g: Int) = (rankGroups filter (_._2.size == g)).values.flatten.toList.sorted
       val kickers = ((1 to 4) map bestFromGrouping).flatten.reverse.toSeq
-      if (isWheel) kickers.takeRight(4) :+ kickers.head else kickers
+      if (isWheel) (kickers takeRight 4) :+ kickers.head else kickers
     }
     (handType, tieBreakers)
   }
@@ -64,24 +64,24 @@ object Hand {
 }
 
 case class Counter() {
-  val count = TrieMap[Hand.Type.Value, Int]().withDefaultValue(0)
+  val count = TrieMap[Hand.Type.Value, Int]() withDefaultValue 0
   var total = 0
   def log(key: Hand.Type.Value) { count(key) += 1; total += 1 }
 }
 
 class Analysis {
-  var (expectedWin, expectedLoss) = (0.0, 0.0)
-  val (wins, ties, losses) = (Counter(), new Counter(), new Counter())
+  var (expectedWin, expectedLoss) = (0d, 0d)
+  val (wins, ties, losses) = (Counter(), Counter(), Counter())
   def total = wins.total + ties.total + losses.total
 
   def reportWin(handType: Hand.Type.Value) { expectedWin += 1; wins log handType }
-  def reportTie(handType: Hand.Type.Value, split: Int) { expectedWin += 1.0/split; ties log handType}
+  def reportTie(handType: Hand.Type.Value, split: Int) { expectedWin += 1d/split; ties log handType}
   def reportLoss(handType: Hand.Type.Value) { expectedLoss += 1; losses log handType }
 
   def expectedReturn(canWin: Double, canLoss: Double) = (canWin*expectedWin - canLoss*expectedLoss)/total
 
   override def toString = {
-    def percent(n: Int) = f"${100.0 * n /total}%5.2f%"
+    def percent(n: Int) = f"${100d * n /total}%5.2f%"
     def bucketDisplay(c: Counter) = (c.count map {e => f"${e._1}%15s: ${percent(e._2)}%s"}) mkString "\n"
     def totalDisplay(name: String, c: Counter) = s" $name: ${percent(c.total)}\n${bucketDisplay(c)}"
     s"${totalDisplay("Wins", wins)}\n${totalDisplay("Ties", ties)}\n${totalDisplay("Loss", losses)}"
@@ -98,14 +98,14 @@ object Analyzer {
       val players = (1 to otherPlayers) map {i => Set(deck.deal, deck.deal)}
       while (community.size < 5) community += deck.deal
 
-      val myBest = Hand.selectBest(myHand ++ community)
-      val otherBests = players map {p => Hand.selectBest(p ++ community)}
+      val myBest = Hand selectBest (myHand ++ community)
+      val otherBests = players map {p => Hand selectBest (p ++ community)}
       val matchUps = otherBests groupBy {p => Hand.ordering.compare(myBest, p).signum}
 
-      myBest.handType match {
-        case defeat if matchUps contains -1 => analysis.reportLoss(matchUps(-1).max.handType)
-        case victory if !(matchUps contains 0) => analysis.reportWin(victory)
-        case tied => analysis.reportTie(tied, matchUps(0).size + 1)
+      myBest handType match {
+        case defeat if matchUps contains -1 => analysis reportLoss matchUps(-1).max.handType
+        case winningHand if !(matchUps contains 0) => analysis reportWin winningHand
+        case tiedHand => analysis reportTie (tiedHand, matchUps(0).size + 1)
       }
     }
     require(analysis.total == simulations)
