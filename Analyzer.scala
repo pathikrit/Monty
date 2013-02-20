@@ -7,7 +7,12 @@ object Card {
   implicit val rankOrdering = Ordering by {card: Card => card.rank}
   val (ranks, suits) = ("23456789TJQKA", "♣♠♦♥")
   val all = for {rank <- 0 until ranks.length; suit <- 0 until suits.length} yield Card(rank, suit)
-  def from(s: String) = Card(ranks indexOf s(0).toUpper, "CSDH" indexOf s(1).toUpper)
+
+  object Implicits {
+    implicit def fromStr(s: String) = Card(ranks indexOf s(0).toUpper, "CSDH" indexOf s(1).toUpper)
+    implicit def fromLine(line: String) = if (line.trim.isEmpty) Array.empty[Card] else line split " " map fromStr
+    implicit def toCardSet(line: String) = fromLine(line).toSet
+  }
 }
 
 class Deck {
@@ -30,7 +35,7 @@ object Hand {
   private def generateAll(hand: Set[Card]) = for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))
 }
 
-class Hand(hand: Set[Card]) {
+class Hand(hand: Iterable[Card]) {
   require(hand.size == 5)
 
   val (handType, sorted) = {

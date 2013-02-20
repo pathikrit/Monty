@@ -1,19 +1,19 @@
 import scala.concurrent.future
 import scala.concurrent.ExecutionContext.Implicits.global
 
+import Card.Implicits._
+
 object ConsoleApp extends App {
-  def cardFromLine(line: String) = if (line.isEmpty) Array.empty[Card] else (line split " " map (Card from _))
-  def readCardsFromConsole = cardFromLine (Console readLine) toSet
 
   while(true) {
     try {
       println("--------------------------------------------------------------------")
       print("Enter hand (e.g AH TS): ")
-      val myHand = readCardsFromConsole
+      val myHand: Set[Card] = Console.readLine
       println(s"You are holding: $myHand")
       require(myHand.size == 2, "You must have 2 unique cards in hand")
       print("Enter community: ")
-      val board = readCardsFromConsole
+      val board: Set[Card] = Console.readLine
       println(s"Community Cards: $board")
       require(Array(0,3,4,5) exists {board.size == _}, "Community must have 0 or 3 or 4 or 5 unique cards")
       require(board intersect myHand isEmpty, "You cannot hold community cards")
