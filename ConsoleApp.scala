@@ -7,7 +7,7 @@ object ConsoleApp extends App {
 
   while(true) {
     try {
-      println("--------------------------------------------------------------------")
+      println("---------------------------------------------------------------------------------------------")
       print("Enter hand (e.g AH TS): ")
       val myHand: Set[Card] = Console.readLine
       println(s"You are holding: $myHand")
@@ -20,18 +20,16 @@ object ConsoleApp extends App {
       print("Enter number of players (excluding you) who have not folded yet: ")
       val otherPlayers = Console.readInt
       require(otherPlayers > 0, "Atleast one other player needed")
-      val evaluation = future { Analyzer.evaluate(myHand, board, otherPlayers) }
+      val analysis = future { Analysis.create(myHand, board, otherPlayers) }
       print("Enter current pot size: $")
       val possibleWins = Console.readDouble
       print("Enter your bets so far: $")
       val possibleLoss = Console.readDouble
-      evaluation onSuccess {
-        case analysis: Analysis => {
-          val expectedReturn = analysis expectedReturn (possibleWins, possibleLoss)
-          val percentReturn = 100 * expectedReturn/possibleLoss
-          println(f"$analysis\nExpected return: $$$expectedReturn%6.3f ($percentReturn%5.2f%)")
-        }
-      }
+      analysis onSuccess {case analysis: Analysis => {
+        val expectedReturn = analysis expectedReturn (possibleWins, possibleLoss)
+        val percentReturn = 100 * expectedReturn/possibleLoss
+        println(f"$analysis\nExpected return: $$$expectedReturn%6.3f ($percentReturn%5.2f%)")
+      }}
       Console readLine
     } catch {
       case e: Exception => Console.err.println(s"Invalid input: ${e.getMessage}. Try again")

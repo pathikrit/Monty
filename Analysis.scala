@@ -76,26 +76,27 @@ class Analysis {
   }
 }
 
-object Analyzer {
+object Analysis {
   import scala.math.Ordering.Implicits._
 
   implicit val rankOrdering = Ordering by {hand: Hand => (hand.handType, hand.sorted)}
+  type Cards = Set[Card]
 
-  private val bestCache = TrieMap[Set[Card], Hand]()
-  private def generateAll(hand: Set[Card]) = for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))
-  def selectBest(hand: Set[Card]) = bestCache getOrElseUpdate (hand, generateAll(hand).max)
+  private val bestCache = TrieMap[Cards, Hand]()
+  private def generateAll(hand: Cards) = for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))
+  def selectBest(board: Cards)(hand: Cards) = bestCache getOrElseUpdate (hand ++ board, generateAll(hand ++ board).max)
 
-  def evaluate(myHand: Set[Card], board: Set[Card], otherPlayers: Int, simulations: Int = 10000) = {
+  def create(myHand: Cards, board: Cards, otherPlayers: Int, simulations: Int = 10000) = {
     val analysis = new Analysis()
     for(simulation <- 1 to simulations) {
       val deck = new Deck()
       deck remove (myHand ++ board)
       val community = mutable.Set() ++ board
-      val players = (1 to otherPlayers) map {i => Set(deck.deal, deck.deal)}
+      val otherHands = (1 to otherPlayers) map {i => Set(deck.deal, deck.deal)}
       while (community.size < 5) community += deck.deal
 
-      val myBest = selectBest (myHand ++ community)
-      val otherBests = players map {p => selectBest (p ++ community)}
+      val getBest = selectBest(community.toSet)(_)
+      val (myBest, otherBests) = (getBest(myHand), otherHands map getBest)
       val matchUps = otherBests groupBy {p => rankOrdering.compare(myBest, p) signum}
 
       myBest handType match {
