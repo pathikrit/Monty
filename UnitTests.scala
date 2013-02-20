@@ -1,7 +1,7 @@
 import Card.Implicits._
 import HandType._
 
-object AnalyzerTest extends App {
+object UnitTests extends App {
 
   def testEvaluation(myHand: Set[Card], expectedType: HandType.Value, sorting: Array[Card]) {
     val hand = new Hand(myHand)
