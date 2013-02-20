@@ -5,3 +5,4 @@ TODO:
 2) Maximum offered raise scenario analyzer
 3) How many folded on what turn
 4) Parallelize
+5) FoldInfo which has state / stage etc

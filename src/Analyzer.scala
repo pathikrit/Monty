@@ -16,18 +16,30 @@ class Deck {
   def remove(discards: Set[Card]) { discards foreach {card: Card => cards dequeueFirst (_ == card)} }
 }
 
+object Hand {
+  import scala.math.Ordering.Implicits._
+
+  object Type extends Enumeration {
+    val HighCard, OnePair, TwoPair, ThreeOfAKind, Straight, Flush, FullHouse, FourOfAKind, StraightFlush = Value
+  }
+
+  implicit val ordering = Ordering by {hand: Hand => (hand.handType, hand.sorted)}
+
+  val bestCache = TrieMap[Set[Card], Hand]()
+  def selectBest(hand: Set[Card]) = bestCache getOrElseUpdate (hand, generateAll(hand).max)
+  private def generateAll(hand: Set[Card]) = for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))
+}
+
 class Hand(hand: Set[Card]) {
+  require(hand.size == 5)
+
   val (handType, sorted) = {
-    require(hand.size == 5)
+    val ranks = hand groupBy {_.rank} mapValues {_.size}
+    def hasSameRanks(matches: Int = 2, required: Int = 1) = (ranks count {_._2 == matches}) >= required
 
-    val (rankGroups, suitGroups) = (hand groupBy {_.rank}, hand groupBy {_.suit})
-    val ranks = rankGroups.keySet
-
-    def hasSameRanks(matches: Int = 2, required: Int = 1) = (rankGroups count {_._2.size == matches}) >= required
-
-    val isFlush = suitGroups.size == 1
+    val isFlush = ( hand groupBy {_.suit}).size == 1
     val isWheel = "A2345" map {Card.ranks indexOf _} forall ranks.contains   // A,2,3,4,5 straight
-    val isStraight = rankGroups.size == 5 && (ranks.max - ranks.min) == 4 || isWheel
+    val isStraight = ranks.size == 5 && (ranks.keys.max - ranks.keys.min) == 4 || isWheel
     val (isThreeOfAKind, isOnePair) = (hasSameRanks(matches = 3), hasSameRanks(matches = 2))
 
     val handType = if (isStraight && isFlush) Hand.Type.StraightFlush
@@ -41,26 +53,12 @@ class Hand(hand: Set[Card]) {
       else                                    Hand.Type.HighCard
 
     val tieBreakers = {
-      def bestFromGrouping(g: Int) = (rankGroups filter (_._2.size == g)).values.flatten.toList.sorted
-      val kickers = ((1 to 4) map bestFromGrouping).flatten.reverse.toSeq
+      val sizeGrouping = hand groupBy {c => ranks(c.rank)} mapValues {_.toList.sorted}
+      val kickers = ((1 until 5) flatMap sizeGrouping.get).flatten.reverse
       if (isWheel) (kickers takeRight 4) :+ kickers.head else kickers
     }
     (handType, tieBreakers)
   }
-}
-
-object Hand {
-  import scala.math.Ordering.Implicits._
-
-  object Type extends Enumeration {
-    val HighCard, OnePair, TwoPair, ThreeOfAKind, Straight, Flush, FullHouse, FourOfAKind, StraightFlush = Value
-  }
-
-  implicit val ordering = Ordering by {hand: Hand => (hand.handType, hand.sorted)}
-
-  val bestCache = TrieMap[Set[Card], Hand]()
-  def selectBest(hand: Set[Card]) = bestCache getOrElseUpdate (hand, generateAll(hand).max)
-  private def generateAll(hand: Set[Card]) = for (c1 <- hand; c2 <- hand; if c1 != c2) yield new Hand(hand - (c1, c2))
 }
 
 case class Counter() {
