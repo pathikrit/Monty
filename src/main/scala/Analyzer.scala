@@ -34,37 +34,33 @@ class Hand(hand: Set[Card]) {
   require(hand.size == 5)
 
   val (handType, sorted) = {
-    val ranks = hand groupBy {_.rank} mapValues {_.size}
-    def hasSameRanks(matches: Int = 2, required: Int = 1) = (ranks count {_._2 == matches}) >= required
+    def rankMatches(card: Card) = hand count (_.rank == card.rank)
+    val groups = hand groupBy rankMatches mapValues {_.toList.sorted}
 
-    val isFlush = ( hand groupBy {_.suit}).size == 1
-    val isWheel = "A2345" map {Card.ranks indexOf _} forall ranks.contains   // A,2,3,4,5 straight
-    val isStraight = ranks.size == 5 && (ranks.keys.max - ranks.keys.min) == 4 || isWheel
-    val (isThreeOfAKind, isOnePair) = (hasSameRanks(matches = 3), hasSameRanks(matches = 2))
+    val isFlush = (hand groupBy {_.suit}).size == 1
+    val isWheel = "A2345" forall {r => hand exists (_.rank == Card.ranks.indexOf(r))}   // A,2,3,4,5 straight
+    val isStraight = groups.size == 1 && (hand.max.rank - hand.min.rank) == 4 || isWheel
+    val (isThreeOfAKind, isOnePair) = (groups contains 3, groups contains 2)
 
-    val handType = if (isStraight && isFlush) Hand.Type.StraightFlush
-      else if (hasSameRanks(matches = 4))     Hand.Type.FourOfAKind
-      else if (isThreeOfAKind && isOnePair)   Hand.Type.FullHouse
-      else if (isFlush)                       Hand.Type.Flush
-      else if (isStraight)                    Hand.Type.Straight
-      else if (isThreeOfAKind)                Hand.Type.ThreeOfAKind
-      else if (hasSameRanks(required = 2))    Hand.Type.TwoPair
-      else if (isOnePair)                     Hand.Type.OnePair
-      else                                    Hand.Type.HighCard
+    val handType = if (isStraight && isFlush)     Hand.Type.StraightFlush
+      else if (groups contains 4)                 Hand.Type.FourOfAKind
+      else if (isThreeOfAKind && isOnePair)       Hand.Type.FullHouse
+      else if (isFlush)                           Hand.Type.Flush
+      else if (isStraight)                        Hand.Type.Straight
+      else if (isThreeOfAKind)                    Hand.Type.ThreeOfAKind
+      else if (isOnePair && groups(2).size == 4)  Hand.Type.TwoPair
+      else if (isOnePair)                         Hand.Type.OnePair
+      else                                        Hand.Type.HighCard
 
-    val tieBreakers = {
-      val sizeGrouping = hand groupBy {c => ranks(c.rank)} mapValues {_.toList.sorted}
-      val kickers = ((1 until 5) flatMap sizeGrouping.get).flatten.reverse
-      if (isWheel) (kickers takeRight 4) :+ kickers.head else kickers
-    }
-    (handType, tieBreakers)
+    val kickers = ((1 until 5) flatMap groups.get).flatten.reverse
+    (handType, if (isWheel) (kickers takeRight 4) :+ kickers.head else kickers)
   }
 }
 
 case class Counter() {
   val count = TrieMap[Hand.Type.Value, Int]() withDefaultValue 0
   var total = 0
-  def log(key: Hand.Type.Value) { count(key) += 1; total += 1 }
+  def report(key: Hand.Type.Value) { count(key) += 1; total += 1 }
 }
 
 class Analysis {
@@ -72,9 +68,9 @@ class Analysis {
   val (wins, ties, losses) = (Counter(), Counter(), Counter())
   def total = wins.total + ties.total + losses.total
 
-  def reportWin(handType: Hand.Type.Value) { expectedWin += 1; wins log handType }
-  def reportTie(handType: Hand.Type.Value, split: Int) { expectedWin += 1d/split; ties log handType}
-  def reportLoss(handType: Hand.Type.Value) { expectedLoss += 1; losses log handType }
+  def reportWin(handType: Hand.Type.Value) { expectedWin += 1; wins report handType }
+  def reportTie(handType: Hand.Type.Value, split: Int) { expectedWin += 1d/split; ties report handType}
+  def reportLoss(handType: Hand.Type.Value) { expectedLoss += 1; losses report handType }
 
   def expectedReturn(canWin: Double, canLoss: Double) = (canWin*expectedWin - canLoss*expectedLoss)/total
 
@@ -98,7 +94,7 @@ object Analyzer {
 
       val myBest = Hand selectBest (myHand ++ community)
       val otherBests = players map {p => Hand selectBest (p ++ community)}
-      val matchUps = otherBests groupBy {p => Hand.ordering.compare(myBest, p).signum}
+      val matchUps = otherBests groupBy {p => Hand.ordering.compare(myBest, p) signum}
 
       myBest handType match {
         case defeat if matchUps contains -1 => analysis reportLoss matchUps(-1).max.handType
