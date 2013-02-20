@@ -1,9 +1,9 @@
 import Card.Implicits._
-import Hand.Type._
+import HandType._
 
 object AnalyzerTest extends App {
 
-  def testEvaluation(myHand: Set[Card], expectedType: Hand.Type.Value, sorting: Array[Card]) {
+  def testEvaluation(myHand: Set[Card], expectedType: HandType.Value, sorting: Array[Card]) {
     val hand = new Hand(myHand)
     require (hand.handType == expectedType)
     require (hand.sorted.zip(sorting) forall {p => p._1.rank == p._2.rank})
