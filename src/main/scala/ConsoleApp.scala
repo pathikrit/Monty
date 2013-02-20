@@ -3,7 +3,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object ConsoleApp extends App {
   def cardFromLine(line: String) = if (line.isEmpty) Array.empty[Card] else (line split " " map (Card from _))
-  def readCardsFromConsole = cardFromLine(Console.readLine).toSet
+  def readCardsFromConsole = cardFromLine (Console readLine) toSet
 
   while(true) {
     try {
